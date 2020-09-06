@@ -206,3 +206,4 @@ services:
 #    volumes:
 #      - ${download}/sabnzbd:/downloads # download folder
 #      - ${ROOT}/data/server/docker/nzbget:/config # config files
+#notes for git
