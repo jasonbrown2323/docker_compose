@@ -1,0 +1,208 @@
+version: "3.4"
+services:
+#docker manger
+  portainer:
+    container_name: portainer
+    image: portainer/portainer:latest
+    command: -H unix:///var/run/docker.sock
+    restart: unless-stopped
+    network_mode: host
+    ports:
+      - 9000:9000
+      - 8000:8000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${ROOT}/data/server/docker/portainer_data:/data
+#Media Downloader
+  deluge:
+    container_name: deluge
+    image: linuxserver/deluge:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+    volumes:
+      - ${download}:/downloads # downloads folder
+      - ${ROOT}/data/server/docker/deluge:/config # config files
+      - ${ssd}/deluge/downloading:/incomplete-downloads
+
+  jackett:
+    container_name: jackett
+    image: linuxserver/jackett:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${ROOT}/data/server/docker/jackett:/config # config files
+
+  sonarr:
+    container_name: sonarr
+    image: linuxserver/sonarr:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${ROOT}/data/server/docker/sonarr:/config # config files
+      - ${ROOT}/media/tv:/tv # tv shows folder
+      - ${download}:/downloads # download folder
+
+  radarr:
+    container_name: radarr
+    image: linuxserver/radarr:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${ROOT}/data/server/docker/radarr:/config # config files
+      - ${ROOT}/media/movies:/movies # movies folder
+      - ${download}:/downloads # download folder
+
+  sabnzbd:
+    image: linuxserver/sabnzbd
+    container_name: sabnzbd
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - ${ROOT}/data/server/docker/sabnzbd:/config
+      - ${download}:/downloads
+      - ${ssd}/sabnzbd/incomplete-downloads:/incomplete-downloads #optional
+    ports:
+      - 8080:8080
+      - 9090:9090
+    restart: unless-stopped
+
+#Home Automation
+  homeassistant:
+    container_name: home-assistant
+    image: homeassistant/home-assistant:stable
+    volumes:
+      - ${docker}/homeassistant:/config
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    restart: unless-stopped
+    ports: 
+      - 8123:8123
+    network_mode: host
+
+  node-red:
+    image: nodered/node-red:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
+    network_mode: host
+    volumes:
+      - ${docker}/nodered:/data
+
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    environment:
+      - TZ=${TZ} # offset = -08:00 / DST -07:00
+    ports:
+       - 1883:1883
+    restart: unless-stopped
+    user: "1000:1000"
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ${docker}/mosquitto/config:/config
+      - ${docker}/mosquitto/data:/data
+      - ${docker}/mosquitto/data:/log
+
+  esphome:
+    image: esphome/esphome
+    container_name: esphome
+    volumes:
+      - ${docker}/esphome/config:/config:rw
+      # Use local time for logging timestamps
+      - /etc/localtime:/etc/localtime:ro
+    network_mode: host
+    restart: unless-stopped
+
+  tasmoadmin:
+    restart: unless-stopped
+    container_name: tasmoadmin
+    image: raymondmm/tasmoadmin
+    volumes:
+      - /hdd/docker/hassio/tasmoadmin/data:/data
+    ports:
+      - "9002:80"
+  
+#  syncthing:
+#    image: linuxserver/syncthing
+#    container_name: syncthing
+#    environment:
+#      - PUID=1000
+#      - PGID=1000
+#      - TZ=${TZ}
+#      - UMASK_SET=022
+#    volumes:
+#      - ${docker}/syncthing:/config
+#      - ${docker}/syncthing/data1:/data1
+#      - ${docker}/syncthing/data2:/data2
+#    ports:
+#      - 8384:8384
+#      - 22000:22000
+#      - 21027:21027/udp
+#    restart: unless-stopped
+
+#VPN
+  wireguard:
+    image: linuxserver/wireguard
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+      - SERVERURL=browntown23.duckdns.org #optional
+      - SERVERPORT=51820 #optional
+      - PEERS=2 #optional
+      - PEERDNS=192.168.123.2 #optional
+      - INTERNAL_SUBNET=10.9.0.1/29 #optional
+    volumes:
+      - ${docker}/wireguard:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+
+
+#  nzbget:
+#    container_name: nzbget
+#    image: linuxserver/nzbget:latest
+#    restart: unless-stopped
+#    network_mode: host
+#    environment:
+#      - PUID=${PUID} # default user id, defined in .env
+#      - PGID=${PGID} # default group id, defined in .#env
+#      - TZ=${TZ} # timezone, defined in .env
+#    volumes:
+#      - ${download}/sabnzbd:/downloads # download folder
+#      - ${ROOT}/data/server/docker/nzbget:/config # config files
