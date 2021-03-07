@@ -1,9 +1,9 @@
 version: "3.4"
 services:
-#docker manger test
+#docker manger
   portainer:
     container_name: portainer
-    image: portainer/portainer:latest
+    image: portainer/portainer-ce
     command: -H unix:///var/run/docker.sock
     restart: unless-stopped
     network_mode: host
@@ -121,15 +121,18 @@ services:
     container_name: mosquitto
     environment:
       - TZ=${TZ} # offset = -08:00 / DST -07:00
+    expose:
+      - "1883"
+      - "9001"
     ports:
-       - 1883:1883
+       - "1883:1883"
+       - "9001:9001"
     restart: unless-stopped
     user: "1000:1000"
     volumes:
       - /etc/localtime:/etc/localtime
-      - ${docker}/mosquitto/config:/config
-      - ${docker}/mosquitto/data:/data
-      - ${docker}/mosquitto/data:/log
+    networks:
+      - default
 
   esphome:
     image: esphome/esphome
@@ -150,23 +153,22 @@ services:
     ports:
       - "9002:80"
   
-#  syncthing:
-#    image: linuxserver/syncthing
-#    container_name: syncthing
-#    environment:
-#      - PUID=1000
-#      - PGID=1000
-#      - TZ=${TZ}
-#      - UMASK_SET=022
-#    volumes:
-#      - ${docker}/syncthing:/config
-#      - ${docker}/syncthing/data1:/data1
-#      - ${docker}/syncthing/data2:/data2
-#    ports:
-#      - 8384:8384
-#      - 22000:22000
-#      - 21027:21027/udp
-#    restart: unless-stopped
+  syncthing:
+    image: ghcr.io/linuxserver/syncthing
+    container_name: syncthing
+    hostname: syncthing #optional
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - ${docker}/syncthing/config:/config
+      - ${docker}/syncthing/backup:/backup
+    ports:
+      - 8384:8384
+      - 22000:22000
+      - 21027:21027/udp
+    restart: unless-stopped
 
 #VPN
   wireguard:
@@ -194,11 +196,35 @@ services:
     restart: unless-stopped
 
 
+  # librespeed:
+  #   image: ghcr.io/linuxserver/librespeed
+  #   container_name: librespeed
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=${TZ}
+  #     - PASSWORD=PASSWORD
+  #     - CUSTOM_RESULTS=true #optional
+  #     - DB_TYPE=sqlite #optional
+  #     - DB_NAME=DB_NAME #optional
+  #     - DB_HOSTNAME=DB_HOSTNAME #optional
+  #     - DB_USERNAME=DB_USERNAME #optional
+  #     - DB_PASSWORD=DB_PASSWORD #optional
+  #   volumes:
+  #     - /path/to/appdata/config:/config
+  #   ports:
+  #     - 80:80
+  #   restart: unless-stopped
+
+
+
+
+
 #  nzbget:
 #    container_name: nzbget
 #    image: linuxserver/nzbget:latest
 #    restart: unless-stopped
-#    network_mode: host
+#    #network_mode: host
 #    environment:
 #      - PUID=${PUID} # default user id, defined in .env
 #      - PGID=${PGID} # default group id, defined in .#env
@@ -206,4 +232,4 @@ services:
 #    volumes:
 #      - ${download}/sabnzbd:/downloads # download folder
 #      - ${ROOT}/data/server/docker/nzbget:/config # config files
-#notes for git
+
